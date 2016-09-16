@@ -5,12 +5,16 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public interface StorageService {
 
     void init();
 
     void store(MultipartFile file);
+
+    void store(ZipInputStream zis, ZipEntry file);
 
     Stream<Path> loadAll();
 

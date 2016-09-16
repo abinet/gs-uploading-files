@@ -7,12 +7,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Service
 public class FileSystemStorageService implements StorageService {
@@ -35,6 +37,23 @@ public class FileSystemStorageService implements StorageService {
             throw new StorageException("Failed to store file " + file.getOriginalFilename(), e);
         }
     }
+
+    @Override
+    public void store(ZipInputStream zis, ZipEntry file) {
+        try {
+            final Path resolve = this.rootLocation.resolve(file.getName().replace("/", "_"));
+            final OutputStream writer = Files.newOutputStream(resolve);
+            byte[] bytesIn = new byte[4096];
+            int read = 0;
+            while((read = zis.read(bytesIn)) != -1) {
+                writer.write(bytesIn, 0, read);
+            }
+            writer.close();
+        } catch (IOException e) {
+            throw new StorageException("Failed to extract/store file " + file.getName(), e);
+        }
+    }
+
 
     @Override
     public Stream<Path> loadAll() {

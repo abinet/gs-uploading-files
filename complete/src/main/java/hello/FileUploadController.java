@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.MimeType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
@@ -19,6 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 
 @Controller
 public class FileUploadController {
@@ -74,12 +78,28 @@ public class FileUploadController {
                 logs.add( "received files " + file.length);
                 LoggerFactory.getLogger(this.getClass()).info("received files " + file.length);
                 for (int i = 0; i < file.length; i++) {
+                    if(file[i].isEmpty()) continue;
+
                     String msg = "file " + file[i].getOriginalFilename() + " of type " + file[i].getContentType() + " received.";
                     logs.add(msg);
-                    storageService.store(file[i]);
-                    msg = "file " + file[i].getOriginalFilename() + " was stored (" + (i+1) + " from " + file.length + ")";
-                    LoggerFactory.getLogger(this.getClass()).info(msg);
-                    logs.add(msg);
+                    if(file[i].getContentType().equals("application/zip")) {
+                        final ZipInputStream zipInputStream = new ZipInputStream(file[i].getInputStream());
+                        ZipEntry entry;
+                        while((entry = zipInputStream.getNextEntry()) !=null) {
+                            if(!entry.isDirectory()) {
+                                storageService.store(zipInputStream, entry);
+                                msg = "file " + entry.getName() + " from zip was stored";
+                                LoggerFactory.getLogger(this.getClass()).info(msg);
+                                logs.add(msg);
+                            }
+                        }
+                        zipInputStream.close();
+                    } else {
+                        storageService.store(file[i]);
+                        msg = "file " + file[i].getOriginalFilename() + " was stored (" + (i+1) + " from " + file.length + ")";
+                        LoggerFactory.getLogger(this.getClass()).info(msg);
+                        logs.add(msg);
+                    }
                 }
                 redirectAttributes.addFlashAttribute("message",
                         "You successfully uploaded " + file.length + " files!");
