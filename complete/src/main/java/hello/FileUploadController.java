@@ -15,12 +15,15 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 @Controller
 public class FileUploadController {
 
     private final StorageService storageService;
+
+    private String status = "Ready";
 
     @Autowired
     public FileUploadController(StorageService storageService) {
@@ -41,6 +44,14 @@ public class FileUploadController {
         return "uploadForm";
     }
 
+    @GetMapping("/status")
+    public String status(Model model)  {
+
+        model.addAttribute("status", status);
+        return "status";
+    }
+
+
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
@@ -53,18 +64,24 @@ public class FileUploadController {
     }
 
     @PostMapping("/")
-    public String handleFileUpload(@RequestParam("file") MultipartFile[] file,
-                                   RedirectAttributes redirectAttributes) {
+    public Callable<String> handleFileUpload(@RequestParam("file") MultipartFile[] file,
+                                             RedirectAttributes redirectAttributes) {
+        return new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                status = "received files " + file.length;
+                LoggerFactory.getLogger(this.getClass()).info(status);
+                for (int i = 0; i < file.length; i++) {
+                    storageService.store(file[i]);
+                    status = "file " + file[i].getOriginalFilename() + " was stored (" + (i+1) + " from " + file.length + ")";
+                    LoggerFactory.getLogger(this.getClass()).info(status);
+                }
+                redirectAttributes.addFlashAttribute("message",
+                        "You successfully uploaded " + file.length + " files!");
 
-        LoggerFactory.getLogger(this.getClass()).info("received files " + file.length);
-        for (int i = 0; i < file.length; i++) {
-            storageService.store(file[i]);
-            LoggerFactory.getLogger(this.getClass()).info("file " + file[i].getOriginalFilename() + " was stored (" + (i+1) + " from " + file.length + ")");
-        }
-        redirectAttributes.addFlashAttribute("message",
-                "You successfully uploaded " + file.length + " files!");
-
-        return "redirect:/";
+                return "redirect:/";
+            }
+        };
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)
