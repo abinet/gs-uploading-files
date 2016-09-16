@@ -15,6 +15,8 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -23,7 +25,7 @@ public class FileUploadController {
 
     private final StorageService storageService;
 
-    private String status = "Ready";
+    private List<String> logs   = new ArrayList ();
 
     @Autowired
     public FileUploadController(StorageService storageService) {
@@ -47,7 +49,7 @@ public class FileUploadController {
     @GetMapping("/status")
     public String status(Model model)  {
 
-        model.addAttribute("status", status);
+        model.addAttribute("logs", logs);
         return "status";
     }
 
@@ -69,12 +71,15 @@ public class FileUploadController {
         return new Callable<String>() {
             @Override
             public String call() throws Exception {
-                status = "received files " + file.length;
-                LoggerFactory.getLogger(this.getClass()).info(status);
+                logs.add( "received files " + file.length);
+                LoggerFactory.getLogger(this.getClass()).info("received files " + file.length);
                 for (int i = 0; i < file.length; i++) {
+                    String msg = "file " + file[i].getOriginalFilename() + " of type " + file[i].getContentType() + " received.";
+                    logs.add(msg);
                     storageService.store(file[i]);
-                    status = "file " + file[i].getOriginalFilename() + " was stored (" + (i+1) + " from " + file.length + ")";
-                    LoggerFactory.getLogger(this.getClass()).info(status);
+                    msg = "file " + file[i].getOriginalFilename() + " was stored (" + (i+1) + " from " + file.length + ")";
+                    LoggerFactory.getLogger(this.getClass()).info(msg);
+                    logs.add(msg);
                 }
                 redirectAttributes.addFlashAttribute("message",
                         "You successfully uploaded " + file.length + " files!");
