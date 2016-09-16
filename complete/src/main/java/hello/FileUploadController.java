@@ -2,6 +2,7 @@ package hello;
 
 import hello.storage.StorageFileNotFoundException;
 import hello.storage.StorageService;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -52,12 +53,16 @@ public class FileUploadController {
     }
 
     @PostMapping("/")
-    public String handleFileUpload(@RequestParam("file") MultipartFile file,
+    public String handleFileUpload(@RequestParam("file") MultipartFile[] file,
                                    RedirectAttributes redirectAttributes) {
 
-        storageService.store(file);
+        LoggerFactory.getLogger(this.getClass()).info("received files " + file.length);
+        for (int i = 0; i < file.length; i++) {
+            storageService.store(file[i]);
+            LoggerFactory.getLogger(this.getClass()).info("file " + file[i].getOriginalFilename() + " was stored (" + (i+1) + " from " + file.length + ")");
+        }
         redirectAttributes.addFlashAttribute("message",
-                "You successfully uploaded " + file.getOriginalFilename() + "!");
+                "You successfully uploaded " + file.length + " files!");
 
         return "redirect:/";
     }
